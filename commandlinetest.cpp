@@ -22,11 +22,15 @@ struct indexOffset {
 
 vector <string> filePathways;
 map <string, string> stopWords;
+map <string, vector <indexOffset> > tempMap;
+int mapCounter = 0;
+const int MAP_QUEUE_SIZE = 50;
 
 void ProcessDirectory(string directory, string word);
 void ProcessEntity(struct dirent* entity, string word); 
 void ProcessFile(string filePath);
-void writeIndexOffsetToFile(string word, indexOffset);
+void writeIndexOffsetToFile();
+void storeWordInfoInMap(string word, indexOffset indexOffsetOfCurrentWord);
 void displayLines(string word);
 string GetNextWord(string& line);
 void fillStopWordMap();
@@ -37,8 +41,9 @@ int main() {
   	string term = "dummyterm";
 	string directory = "";
 	ProcessDirectory(directory, term);
+	writeIndexOffsetToFile(); //this function needs to be called one last time to get everything left in the map
 	
-	//outer loop actually loops them through searching the word.
+	//outer loop actually loops them through the process of displayLines
 	while (1) {
 		//inner loop makes sure they're not searching for a stopWord word
 		while (1) {
@@ -52,7 +57,6 @@ int main() {
 		}
 		displayLines(term);
 	}
-	
 	return 0;
 }
 
@@ -160,24 +164,51 @@ void ProcessFile(string filePath) {
 			//and after ~25 million words, you add all the words + their information stored in the map to a file
 			//clear out the map, fill it up to ~25 mil and write to the files again.
 			
-			
-			
 			size_t found = word.find_first_not_of("abcdefghijklmnopqrstuvwxyz ");
 			if (word.length() > 2 && found == string::npos && stopWords.count(word) == 0) {
+				//if we've queued up requisite size of map in the memory, let's dump it all into files!!
+				if (mapCounter >= MAP_QUEUE_SIZE) {
+					writeIndexOffsetToFile();
+					mapCounter = 0;
+					tempMap.clear();
+				} else {
+				//otherwise, keep storing word info in the map.
 				//cout << "Wrote this word to file: " << word << endl;
-				writeIndexOffsetToFile(word, indexOffsetOfCurrentWord);
+				storeWordInfoInMap(word, indexOffsetOfCurrentWord);
+				}
 			}
 		}
 	}
 	return;
 }
 
-void writeIndexOffsetToFile(string word, indexOffset indexOffsetOfCurrentWord) {
-	string fullPath = dumpPath + word + "Index.bin";
-	ofstream outputFile;
-	outputFile.open(fullPath.c_str(), ios::app | ios::binary);
-	outputFile.write((char*)&indexOffsetOfCurrentWord, sizeof(indexOffset));
-	outputFile.close();
+void storeWordInfoInMap(string word, indexOffset indexOffsetOfCurrentWord) {
+	tempMap[word].push_back(indexOffsetOfCurrentWord);
+	mapCounter++;
+	return;
+}
+
+void writeIndexOffsetToFile() {
+
+	map<string, vector<indexOffset> >::iterator it;
+	for (it = tempMap.begin(); it != tempMap.end(); it++ )
+	{
+		string word = it->first;
+		//now that we've found the word, open the file associated with that word.
+		string fullPath = dumpPath + word + "Index.bin";
+		ofstream outputFile;
+		outputFile.open(fullPath.c_str(), ios::app | ios::binary);
+		cout << "Adding word: " << word << endl;
+		vector <indexOffset> valueVector = it->second;
+		for (int i = 0; i < valueVector.size(); i++) {
+			indexOffset tempIndexOffset = valueVector[i];
+			outputFile.write((char*)&tempIndexOffset, sizeof(indexOffset));
+			int tempIndex = tempIndexOffset.index;
+			int tempOffset = tempIndexOffset.offset;
+			cout << "Adding index and offset: " << tempIndex << " and " << tempOffset << endl;
+		}
+		outputFile.close();
+	}
 	return;
 }
 
