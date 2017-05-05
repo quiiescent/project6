@@ -13,13 +13,19 @@ CFLAGS= -g
 
 RM= /bin/rm -f
 
-all: commandlinetest openFileTest
+all: commandlinetest openFileTest mapTest
 
 commandlinetest: commandlinetest.o
 	$(CC) commandlinetest.o -o x
 
 openFileTest: openFileTest.o
 	$(CC) openFileTest.o -o openFileTest
+
+mapTest: mapTest.o
+	$(CC) mapTest.o -o mapTest
+
+mapTest.o: mapTest.cpp
+	$(CC) -c $(CFLAGS) mapTest.cpp
 
 commandlinetest.o: commandlinetest.cpp
 	$(CC) -c $(CFLAGS) commandlinetest.cpp

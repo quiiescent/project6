@@ -21,25 +21,29 @@ struct indexOffset {
 };
 
 vector <string> filePathways;
+map <string, string> stopWords;
 
 void ProcessDirectory(string directory, string word);
 void ProcessEntity(struct dirent* entity, string word); 
 void ProcessFile(string filePath);
 void writeIndexOffsetToFile(string word, indexOffset);
-void retrieveWord(string word);
+void displayLines(string word);
 string GetNextWord(string& line);
+void fillStopWordMap();
 
 int main() {
+
+	fillStopWordMap();
 
 	string directory = "";
   cout << "Enter a term to search for!" << endl;
   string term;
-  //cin >> term;
+  cin >> term;
   // Normalize string to lower case
   transform(term.begin(), term.end(), term.begin(), ::tolower);
 
 	ProcessDirectory(directory, term);
-	retrieveWord("white");
+	displayLines(term);
 	
 	return 0;
 }
@@ -123,6 +127,7 @@ void ProcessFile(string filePath) {
 		//as long as we're still in the file, get the position of the line we're on and the line
 		int pos = infile.tellg();
 		getline(infile, line);
+		cout << "The line we're looking at right now is: " << line << endl;
 		
 		while (line.length() > 0) {
 		//as long as the line length isn't 0, keep getting the next word 
@@ -135,13 +140,14 @@ void ProcessFile(string filePath) {
 			word = GetNextWord(line);
 			//store the word... this also removes that word from the line itself, so eventually
 			//we'll exit the loop when no words are left 
-			
+
 			
 			//here is the if condition where you'll also want to be checking for stopwords
 			//as it stands, checks only for words greater than 2 characters in length
 			//and filters out words that don't contain alpha characters.
 			size_t found = word.find_first_not_of("abcdefghijklmnopqrstuvwxyz ");
-			if (word.length() > 2 && found == string::npos /* && stopwords.find(word) != true */) {
+			if (word.length() > 2 && found == string::npos && stopWords.find("zoroaster") == stopWords.end()) {
+				cout << "Wrote this word to file: " << word << endl;
 				writeIndexOffsetToFile(word, indexOffsetOfCurrentWord);
 			}
 		}
@@ -150,32 +156,46 @@ void ProcessFile(string filePath) {
 }
 
 void writeIndexOffsetToFile(string word, indexOffset indexOffsetOfCurrentWord) {
-	string fullPath = dumpPath + word + "Index.txt";
+	string fullPath = dumpPath + word + "Index.bin";
 	ofstream outputFile;
-	outputFile.open(fullPath.c_str(), ios::app);
-	outputFile.write(reinterpret_cast<char*>(&indexOffsetOfCurrentWord), sizeof(indexOffset));
+	outputFile.open(fullPath.c_str(), ios::app | ios::binary);
+	outputFile.write((char*)&indexOffsetOfCurrentWord, sizeof(indexOffset));
 	outputFile.close();
 	return;
 }
 
-void retrieveWord(string word) {
+void displayLines(string word) {
 	
 	indexOffset value;
 	int indexOfCurrentWord;
 	int offsetOfCurrentWord;
-	string fullPath = dumpPath + word + "Index.txt";
-	ifstream inputFile;
-	inputFile.open(fullPath.c_str(), ios::in | ios::binary);
+	int indexOfLastWord;
+	int offsetOfLastWord;
+	string fullPath = dumpPath + word + "Index.bin";
+	ifstream infoFile;
+	infoFile.open(fullPath.c_str(), ios::in | ios::binary);
 	
-	while (!inputFile.eof()) {
-		inputFile.read((char*)&value,sizeof(indexOffset));
+	while (!infoFile.eof()) {
+		infoFile.read((char*)&value,sizeof(indexOffset));
 		indexOfCurrentWord = value.index;
 		offsetOfCurrentWord = value.offset;
-		cout << "The index of the current word is: " << indexOfCurrentWord << ". The offset of the current word is: " << offsetOfCurrentWord << endl;
+		
+		if (offsetOfCurrentWord != offsetOfLastWord) {
+			string fileToOpen = filePathways[indexOfCurrentWord];
+			//should be the file pathway you want
+		
+			ifstream gutenbergFile;
+			gutenbergFile.open(fileToOpen.c_str(), ios::in); //open the file
+			gutenbergFile.seekg(offsetOfCurrentWord, gutenbergFile.beg); //seekg to the offset of the line
+			string line;
+			getline(gutenbergFile, line); //get that line
+			gutenbergFile.close();
+			cout << line << endl;
+		}
+		offsetOfLastWord = offsetOfCurrentWord;
+		indexOfLastWord = indexOfCurrentWord;
 	}
-	
-	inputFile.close();
-
+	infoFile.close();
 	return;
 }
 
@@ -198,6 +218,7 @@ string GetNextWord(string& line) {
   } else {
     // no delimiters found at all
     next = line;
+    //cout << "The line we're looking at right now is: " << line << endl;
     line = "";
   }
   transform(next.begin(), next.end(), next.begin(), ::tolower);
@@ -211,4 +232,16 @@ bool hasEnding (string const &fullString, string const &ending) {
   } else {
     return false;
   }
+}
+
+void fillStopWordMap() {
+	ifstream stopWordFile;
+	stopWordFile.open("listOfStopWords.txt");
+	string stopWord;
+	while (!stopWordFile.eof()) {
+		getline(stopWordFile, stopWord);
+		stopWords.insert(map<string, string>::value_type(stopWord, "butts"));
+	}
+	stopWordFile.close();
+	return;
 }
