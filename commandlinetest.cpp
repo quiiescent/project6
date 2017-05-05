@@ -34,16 +34,24 @@ void fillStopWordMap();
 int main() {
 
 	fillStopWordMap();
-
+  	string term = "dummyterm";
 	string directory = "";
-  cout << "Enter a term to search for!" << endl;
-  string term;
-  cin >> term;
-  // Normalize string to lower case
-  transform(term.begin(), term.end(), term.begin(), ::tolower);
-
 	ProcessDirectory(directory, term);
-	displayLines(term);
+	
+	//outer loop actually loops them through searching the word.
+	while (1) {
+		//inner loop makes sure they're not searching for a stopWord word
+		while (1) {
+		cout << "Enter a term to search for!" << endl;
+		 cin >> term;
+		 // Normalize string to lower case
+		 transform(term.begin(), term.end(), term.begin(), ::tolower);
+		 if (stopWords.count(term) == 0) {
+			break;
+			}
+		}
+		displayLines(term);
+	}
 	
 	return 0;
 }
@@ -127,7 +135,7 @@ void ProcessFile(string filePath) {
 		//as long as we're still in the file, get the position of the line we're on and the line
 		int pos = infile.tellg();
 		getline(infile, line);
-		cout << "The line we're looking at right now is: " << line << endl;
+		//cout << "The line we're looking at right now is: " << line << endl;
 		
 		while (line.length() > 0) {
 		//as long as the line length isn't 0, keep getting the next word 
@@ -145,9 +153,18 @@ void ProcessFile(string filePath) {
 			//here is the if condition where you'll also want to be checking for stopwords
 			//as it stands, checks only for words greater than 2 characters in length
 			//and filters out words that don't contain alpha characters.
+			
+			
+			//when you're adding words to the file, you should instead add the appropriate information to a map
+			//that IS STORED IN MEMORY
+			//and after ~25 million words, you add all the words + their information stored in the map to a file
+			//clear out the map, fill it up to ~25 mil and write to the files again.
+			
+			
+			
 			size_t found = word.find_first_not_of("abcdefghijklmnopqrstuvwxyz ");
-			if (word.length() > 2 && found == string::npos && stopWords.find("zoroaster") == stopWords.end()) {
-				cout << "Wrote this word to file: " << word << endl;
+			if (word.length() > 2 && found == string::npos && stopWords.count(word) == 0) {
+				//cout << "Wrote this word to file: " << word << endl;
 				writeIndexOffsetToFile(word, indexOffsetOfCurrentWord);
 			}
 		}
@@ -173,7 +190,16 @@ void displayLines(string word) {
 	int offsetOfLastWord;
 	string fullPath = dumpPath + word + "Index.bin";
 	ifstream infoFile;
-	infoFile.open(fullPath.c_str(), ios::in | ios::binary);
+	
+	//if the file exists, open that file.
+	//if it doesn't exist, then that word wasn't found in the whole project because a file
+	//was not created for that word.
+	if (ifstream(fullPath.c_str())) {
+		infoFile.open(fullPath.c_str(), ios::in | ios::binary);
+	} else {
+		cout << "That word was not found in all of project gutenberg! Wow!" << endl;
+		return;
+	}
 	
 	while (!infoFile.eof()) {
 		infoFile.read((char*)&value,sizeof(indexOffset));
