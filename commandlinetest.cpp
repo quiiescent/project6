@@ -6,10 +6,11 @@
 #include <dirent.h> // Needed for directory search
 #include <vector>
 #include <map>
+#include <unistd.h>
 
 using namespace std;
 
-string path = "/home/students/wilhelmj/testingGutenberg";
+string path = "/home/skon/books/";
 string dumpPath = "/home/students/wilhelmj/indexOffsetDump/";
 string delimiters = " ,.;:?'\"()[]-";
 int fileCount = 0;
@@ -23,8 +24,21 @@ struct indexOffset {
 vector <string> filePathways;
 map <string, string> stopWords;
 map <string, vector <indexOffset> > tempMap;
+map <char, string> afMap;
+map <char, string> glMap;
+map <char, string> mrMap;
+map <char, string> szMap;
+
+
 int mapCounter = 0;
-const int MAP_QUEUE_SIZE = 50;
+const int MAP_QUEUE_SIZE = 5000000;
+
+int txtFileCounter = 0;
+const int MAX_FILES_TO_SCAN = 1000;
+
+int wordCounter = 0;
+const int WORD_NOTIFICATION_LIMIT = 1000000;
+int percentLoaded = 0;
 
 void ProcessDirectory(string directory, string word);
 void ProcessEntity(struct dirent* entity, string word); 
@@ -34,6 +48,7 @@ void storeWordInfoInMap(string word, indexOffset indexOffsetOfCurrentWord);
 void displayLines(string word);
 string GetNextWord(string& line);
 void fillStopWordMap();
+bool hasEnding (string const &fullString, string const &ending);
 
 int main() {
 
@@ -120,8 +135,13 @@ void ProcessEntity(struct dirent* entity, string word)
       //when we're adding stuff to the map, we need to have the current index of the filePathway
       //starts at 0, and increases by one after we're scanned through that file.
       ProcessFile(filePath);
-      
+      txtFileCounter++;
       currentIndexOfFilePathway++;
+      
+      if (txtFileCounter >= MAX_FILES_TO_SCAN) {
+      	//get the heck outta here	
+	  }
+	  
       return;
     }
 
@@ -131,10 +151,22 @@ void ProcessEntity(struct dirent* entity, string word)
 }
 
 void ProcessFile(string filePath) {
+
 	ifstream infile;
+	const char* fn = filePath.c_str();
+	//cout << filePath;
+	cout << fn << endl;
+	int cantOpen = access(fn, R_OK);
+	//cout << check << endl;
+	if (cantOpen) {
+		return;
+	}
+	
 	infile.open(filePath.c_str());
 	string line, word;
-	cout << filePath << endl;
+	if (!hasEnding(filePath, ".txt")) {
+		return;
+	}
 	while (!infile.eof()) {
 		//as long as we're still in the file, get the position of the line we're on and the line
 		int pos = infile.tellg();
@@ -198,14 +230,21 @@ void writeIndexOffsetToFile() {
 		string fullPath = dumpPath + word + "Index.bin";
 		ofstream outputFile;
 		outputFile.open(fullPath.c_str(), ios::app | ios::binary);
-		cout << "Adding word: " << word << endl;
+		//cout << "Adding word: " << word << endl;
 		vector <indexOffset> valueVector = it->second;
 		for (int i = 0; i < valueVector.size(); i++) {
 			indexOffset tempIndexOffset = valueVector[i];
 			outputFile.write((char*)&tempIndexOffset, sizeof(indexOffset));
-			int tempIndex = tempIndexOffset.index;
-			int tempOffset = tempIndexOffset.offset;
-			cout << "Adding index and offset: " << tempIndex << " and " << tempOffset << endl;
+			wordCounter++;
+			if (wordCounter >= WORD_NOTIFICATION_LIMIT) {
+				cout << "1,000,000 nonunique words added." << endl;
+				percentLoaded++;
+				cout << percentLoaded << "/1000 loaded." << endl;
+				wordCounter = 0;
+			}
+			//int tempIndex = tempIndexOffset.index;
+			//int tempOffset = tempIndexOffset.offset;
+			//cout << "Adding index and offset: " << tempIndex << " and " << tempOffset << endl;
 		}
 		outputFile.close();
 	}
@@ -292,13 +331,49 @@ bool hasEnding (string const &fullString, string const &ending) {
 }
 
 void fillStopWordMap() {
+
+	string meaninglessWord = "butts";
+
 	ifstream stopWordFile;
 	stopWordFile.open("listOfStopWords.txt");
 	string stopWord;
 	while (!stopWordFile.eof()) {
 		getline(stopWordFile, stopWord);
-		stopWords.insert(map<string, string>::value_type(stopWord, "butts"));
+		stopWords.insert(map<string, string>::value_type(stopWord, meaninglessWord));
 	}
 	stopWordFile.close();
+	
+	//this program also fills maps of the letters of the alphabet now
+	
+	afMap.insert(map<char, string>::valuetype_('a', meaninglessWord));
+	afMap.insert(map<char, string>::valuetype_('b', meaninglessWord));
+	afMap.insert(map<char, string>::valuetype_('c', meaninglessWord));
+	afMap.insert(map<char, string>::valuetype_('d', meaninglessWord));
+	afMap.insert(map<char, string>::valuetype_('e', meaninglessWord));
+	afMap.insert(map<char, string>::valuetype_('f', meaninglessWord));
+	
+	glMap.insert(map<char, string>::valuetype_('g', meaninglessWord));
+	glMap.insert(map<char, string>::valuetype_('h', meaninglessWord));
+	glMap.insert(map<char, string>::valuetype_('i', meaninglessWord));
+	glMap.insert(map<char, string>::valuetype_('j', meaninglessWord));
+	glMap.insert(map<char, string>::valuetype_('k', meaninglessWord));
+	glMap.insert(map<char, string>::valuetype_('l', meaninglessWord));
+	
+	mrMap.insert(map<char, string>::valuetype_('m', meaninglessWord));
+	mrMap.insert(map<char, string>::valuetype_('n', meaninglessWord));
+	mrMap.insert(map<char, string>::valuetype_('o', meaninglessWord));
+	mrMap.insert(map<char, string>::valuetype_('p', meaninglessWord));
+	mrMap.insert(map<char, string>::valuetype_('q', meaninglessWord));
+	mrMap.insert(map<char, string>::valuetype_('r', meaninglessWord));
+
+	szMap.insert(map<char, string>::valuetype_('s', meaninglessWord));
+	szMap.insert(map<char, string>::valuetype_('t', meaninglessWord));
+	szMap.insert(map<char, string>::valuetype_('u', meaninglessWord));
+	szMap.insert(map<char, string>::valuetype_('v', meaninglessWord));
+	szMap.insert(map<char, string>::valuetype_('w', meaninglessWord));
+	szMap.insert(map<char, string>::valuetype_('x', meaninglessWord));
+	szMap.insert(map<char, string>::valuetype_('y', meaninglessWord));
+	szMap.insert(map<char, string>::valuetype_('z', meaninglessWord));
+	
 	return;
 }
